@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bússola da Saúde — Chatbot de Especialidades Médicas</title>
+<style>
+  :root{
+    --bg: #eef3f0;
+    --paper: #ffffff;
+    --ink: #16302b;
+    --teal: #1f5c52;
+    --teal-dark: #123d36;
+    --coral: #e0654a;
+    --line: #d8e3de;
+    --muted: #5c766f;
+  }
+
+  *{box-sizing:border-box;}
+
+  body{
+    margin:0;
+    background:var(--bg);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    color:var(--ink);
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+  }
+
+  .app{
+    width:100%;
+    max-width:560px;
+    background:var(--paper);
+    border-radius:18px;
+    overflow:hidden;
+    box-shadow: 0 20px 50px rgba(18,61,54,0.18);
+    border:1px solid var(--line);
+  }
+
+  header{
+    background: var(--teal-dark);
+    color:#f2f7f5;
+    padding:22px 24px;
+    position:relative;
+  }
+
+  header::after{
+    content:"";
+    position:absolute;
+    left:0; right:0; bottom:0;
+    height:6px;
+    background: repeating-linear-gradient(90deg, var(--coral) 0 10px, transparent 10px 20px);
+    opacity:.6;
+  }
+
+  .cross{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:34px;height:34px;
+    background:var(--coral);
+    border-radius:8px;
+    margin-bottom:10px;
+    font-weight:700;
+    font-size:18px;
+  }
+
+  header h1{
+    margin:0 0 4px 0;
+    font-size:1.35rem;
+    letter-spacing:.2px;
+    font-family: Georgia, 'Times New Roman', serif;
+  }
+
+  header p{
+    margin:0;
+    font-size:.85rem;
+    color:#c7dbd4;
+  }
+
+  .chat{
+    height:420px;
+    overflow-y:auto;
+    padding:20px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    background:
+      linear-gradient(var(--paper), var(--paper));
+  }
+
+  .bubble{
+    max-width:80%;
+    padding:11px 14px;
+    border-radius:14px;
+    font-size:.92rem;
+    line-height:1.45;
+    white-space:pre-line;
+  }
+
+  .bot{
+    align-self:flex-start;
+    background:#eaf2ef;
+    border:1px solid var(--line);
+    border-bottom-left-radius:4px;
+    color:var(--ink);
+  }
+
+  .bot .tag{
+    display:block;
+    font-size:.68rem;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    color:var(--teal);
+    margin-bottom:4px;
+    font-weight:700;
+  }
+
+  .user{
+    align-self:flex-end;
+    background:var(--teal);
+    color:#fff;
+    border-bottom-right-radius:4px;
+  }
+
+  .quick-replies{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    align-self:flex-start;
+    max-width:90%;
+  }
+
+  .chip{
+    background:#fff;
+    border:1px solid var(--teal);
+    color:var(--teal-dark);
+    padding:7px 12px;
+    border-radius:999px;
+    font-size:.82rem;
+    cursor:pointer;
+    transition: all .15s ease;
+  }
+  .chip:hover{ background:var(--teal); color:#fff; }
+
+  form{
+    display:flex;
+    gap:8px;
+    padding:14px;
+    border-top:1px solid var(--line);
+    background:#f7faf9;
+  }
+
+  input[type="text"]{
+    flex:1;
+    padding:11px 14px;
+    border-radius:10px;
+    border:1px solid var(--line);
+    font-size:.92rem;
+    outline:none;
+    background:#fff;
+  }
+  input[type="text"]:focus{ border-color:var(--teal); }
+
+  button.send{
+    background:var(--coral);
+    color:#fff;
+    border:none;
+    border-radius:10px;
+    padding:0 18px;
+    font-weight:600;
+    cursor:pointer;
+    font-size:.9rem;
+  }
+  button.send:hover{ filter:brightness(1.05); }
+
+  footer{
+    padding:10px 18px 16px;
+    font-size:.72rem;
+    color:var(--muted);
+    text-align:center;
+    background:#f7faf9;
+  }
+
+  .chat::-webkit-scrollbar{ width:8px; }
+  .chat::-webkit-scrollbar-thumb{ background:var(--line); border-radius:8px; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header>
+    <div class="cross">+</div>
+    <h1>Bússola da Saúde</h1>
+    <p>Descreva um sintoma e eu indico a especialidade médica ideal</p>
+  </header>
+
+  <div class="chat" id="chat"></div>
+
+  <form id="form">
+    <input type="text" id="userInput" placeholder="Ex: estou com dor no peito..." autocomplete="off" />
+    <button type="submit" class="send">Enviar</button>
+  </form>
+
+  <footer>
+    ⚠️ Este chatbot é um projeto educacional e NÃO substitui uma consulta médica real.
+  </footer>
+</div>
+
+<script>
+// ---------- Base de conhecimento: especialidades x palavras-chave ----------
+const especialidades = [
+  {
+    nome: "Cardiologia",
+    palavras: ["coração","peito","pressão alta","pressão baixa","palpitação","palpitações","taquicardia","dor no peito"],
+    resposta: "Pelo que você descreveu, isso pode estar relacionado ao coração. Recomendo procurar um(a) Cardiologista."
+  },
+  {
+    nome: "Dermatologia",
+    palavras: ["pele","mancha","manchas","coceira","acne","espinha","alergia na pele","unha","unhas","caspa"],
+    resposta: "Sintomas na pele, unhas ou cabelo costumam ser avaliados por um(a) Dermatologista."
+  },
+  {
+    nome: "Ortopedia",
+    palavras: ["osso","ossos","articulação","joelho","coluna","fratura","dor nas costas","dor muscular","tornozelo","ombro"],
+    resposta: "Questões de ossos, articulações ou dores musculares geralmente são tratadas por um(a) Ortopedista."
+  },
+  {
+    nome: "Pediatria",
+    palavras: ["criança","crianca","bebê","bebe","meu filho","minha filha","recém-nascido"],
+    resposta: "Para cuidados de saúde infantil, o ideal é um(a) Pediatra."
+  },
+  {
+    nome: "Ginecologia",
+    palavras: ["menstruação","menstruacao","gravidez","útero","utero","ovário","ovario","ciclo menstrual"],
+    resposta: "Esse tema está dentro da área de Ginecologia. Vale procurar um(a) Ginecologista."
+  },
+  {
+    nome: "Urologia",
+    palavras: ["próstata","prostata","urina","xixi","bexiga","dor ao urinar"],
+    resposta: "Sintomas relacionados ao sistema urinário costumam ser avaliados por um(a) Urologista."
+  },
+  {
+    nome: "Psiquiatria",
+    palavras: ["ansiedade","ansioso","depressão","depressao","triste","tristeza","pânico","panico","insônia","insonia","estresse","estressado"],
+    resposta: "Esses sinais podem estar ligados à saúde emocional. Considere conversar com um(a) Psiquiatra ou Psicólogo(a)."
+  },
+  {
+    nome: "Oftalmologia",
+    palavras: ["olho","olhos","visão","visao","vista embaçada","vista cansada","enxergar"],
+    resposta: "Problemas de visão ou nos olhos são avaliados por um(a) Oftalmologista."
+  },
+  {
+    nome: "Otorrinolaringologia",
+    palavras: ["ouvido","garganta","nariz","sinusite","rouquidão","rouquidao","dor de ouvido"],
+    resposta: "Sintomas de ouvido, nariz ou garganta são da área de Otorrinolaringologia."
+  },
+  {
+    nome: "Gastroenterologia",
+    palavras: ["estômago","estomago","barriga","intestino","azia","náusea","nausea","digestão","digestao","vômito","vomito"],
+    resposta: "Questões digestivas costumam ser tratadas por um(a) Gastroenterologista."
+  },
+  {
+    nome: "Neurologia",
+    palavras: ["dor de cabeça","dor de cabeca","enxaqueca","tontura","formigamento","convulsão","convulsao","memória","memoria"],
+    resposta: "Sintomas neurológicos, como dores de cabeça frequentes ou tontura, podem indicar consulta com um(a) Neurologista."
+  },
+  {
+    nome: "Endocrinologia",
+    palavras: ["diabetes","tireoide","tireóide","hormônio","hormonio","ganho de peso","perda de peso"],
+    resposta: "Questões hormonais e metabólicas são acompanhadas por um(a) Endocrinologista."
+  },
+  {
+    nome: "Pneumologia",
+    palavras: ["tosse","pulmão","pulmao","falta de ar","asma","respiração","respiracao"],
+    resposta: "Sintomas respiratórios são avaliados por um(a) Pneumologista."
+  }
+];
+
+const respostaGenerica =
+  "Não consegui identificar uma especialidade específica com certeza. " +
+  "Para sintomas persistentes, o ideal é começar com um(a) Clínico(a) Geral, " +
+  "que pode encaminhar você ao especialista certo.";
+
+const chat = document.getElementById('chat');
+const form = document.getElementById('form');
+const userInput = document.getElementById('userInput');
+
+function addBubble(text, sender, tag){
+  const el = document.createElement('div');
+  el.className = 'bubble ' + sender;
+  if(tag){
+    const t = document.createElement('span');
+    t.className = 'tag';
+    t.textContent = tag;
+    el.appendChild(t);
+    el.append(text);
+  } else {
+    el.textContent = text;
+  }
+  chat.appendChild(el);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function addQuickReplies(options){
+  const wrap = document.createElement('div');
+  wrap.className = 'quick-replies';
+  options.forEach(opt => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'chip';
+    chip.textContent = opt;
+    chip.onclick = () => {
+      wrap.remove();
+      handleUserMessage(opt);
+    };
+    wrap.appendChild(chip);
+  });
+  chat.appendChild(wrap);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function encontrarEspecialidade(textoOriginal){
+  const texto = textoOriginal.toLowerCase();
+  for(const esp of especialidades){
+    if(esp.palavras.some(p => texto.includes(p))){
+      return esp;
+    }
+  }
+  return null;
+}
+
+function handleUserMessage(texto){
+  addBubble(texto, 'user');
+
+  setTimeout(() => {
+    const esp = encontrarEspecialidade(texto);
+    if(esp){
+      addBubble(esp.resposta, 'bot', esp.nome);
+    } else {
+      addBubble(respostaGenerica, 'bot', 'Sugestão geral');
+    }
+    setTimeout(() => {
+      addBubble('Quer descrever outro sintoma ou escolher uma opção abaixo?', 'bot');
+      addQuickReplies(["Dor no peito","Dor de cabeça","Dor nas costas","Ansiedade"]);
+    }, 400);
+  }, 500);
+}
+
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const texto = userInput.value.trim();
+  if(!texto) return;
+  userInput.value = '';
+  handleUserMessage(texto);
+});
+
+// Mensagem inicial
+addBubble("Olá! 👋 Eu sou o assistente da Bússola da Saúde.\nDescreva um sintoma ou clique em uma das opções abaixo para eu indicar a especialidade médica mais adequada.", 'bot');
+addQuickReplies(["Dor no peito","Dor de cabeça","Dor nas costas","Ansiedade","Dor de ouvido"]);
+</script>
+
+</body>
+</html>
