@@ -126,6 +126,12 @@
     border-bottom-right-radius:4px;
   }
 
+  .bubble.loading{
+    color: var(--muted);
+    font-style: italic;
+    font-size: .85rem;
+  }
+
   .quick-replies{
     display:flex;
     flex-wrap:wrap;
@@ -305,6 +311,35 @@ function addBubble(text, sender, tag){
   chat.scrollTop = chat.scrollHeight;
 }
 
+function addLoadingBubble(){
+  const el = document.createElement('div');
+  el.className = 'bubble bot loading';
+  el.id = 'loadingBubble';
+  el.textContent = 'Buscando mais informações...';
+  chat.appendChild(el);
+  chat.scrollTop = chat.scrollHeight;
+  return el;
+}
+
+function removeLoadingBubble(){
+  const el = document.getElementById('loadingBubble');
+  if(el) el.remove();
+}
+
+// ---------- Consumo de API real: Wikipédia (gratuita, sem chave, sem custo) ----------
+async function buscarResumoWikipedia(termo){
+  const url = `https://pt.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(termo)}`;
+  try{
+    const resposta = await fetch(url);
+    if(!resposta.ok) throw new Error('Não encontrado');
+    const dados = await resposta.json();
+    if(!dados.extract) throw new Error('Sem resumo disponível');
+    return dados.extract;
+  } catch(erro){
+    return null;
+  }
+}
+
 function addQuickReplies(options){
   const wrap = document.createElement('div');
   wrap.className = 'quick-replies';
@@ -333,21 +368,31 @@ function encontrarEspecialidade(textoOriginal){
   return null;
 }
 
-function handleUserMessage(texto){
+async function handleUserMessage(texto){
   addBubble(texto, 'user');
 
-  setTimeout(() => {
-    const esp = encontrarEspecialidade(texto);
-    if(esp){
-      addBubble(esp.resposta, 'bot', esp.nome);
-    } else {
-      addBubble(respostaGenerica, 'bot', 'Sugestão geral');
+  await new Promise(r => setTimeout(r, 400));
+
+  const esp = encontrarEspecialidade(texto);
+
+  if(esp){
+    addBubble(esp.resposta, 'bot', esp.nome);
+
+    // Consumo real de API: busca um resumo sobre a especialidade na Wikipédia
+    addLoadingBubble();
+    const resumo = await buscarResumoWikipedia(esp.nome);
+    removeLoadingBubble();
+
+    if(resumo){
+      addBubble(resumo, 'bot', 'Wikipédia · ' + esp.nome);
     }
-    setTimeout(() => {
-      addBubble('Quer descrever outro sintoma ou escolher uma opção abaixo?', 'bot');
-      addQuickReplies(["Dor no peito","Dor de cabeça","Dor nas costas","Ansiedade"]);
-    }, 400);
-  }, 500);
+  } else {
+    addBubble(respostaGenerica, 'bot', 'Sugestão geral');
+  }
+
+  await new Promise(r => setTimeout(r, 300));
+  addBubble('Quer descrever outro sintoma ou escolher uma opção abaixo?', 'bot');
+  addQuickReplies(["Dor no peito","Dor de cabeça","Dor nas costas","Ansiedade"]);
 }
 
 form.addEventListener('submit', (e) => {
