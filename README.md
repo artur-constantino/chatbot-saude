@@ -5,7 +5,7 @@ com base nos sintomas descritos. Feito com **HTML, CSS e JavaScript puro**, sem
 nenhuma API externa ou back-end — roda inteiramente no navegador.
 
 ## 🔗 Acesso
-👉 https://github.com/artur-constantino/chatbot-saude
+👉 https://artur-constantino.github.io/chatbot-saude/
 
 ## 💡 Como funciona
 O usuário digita um sintoma (ex: "dor no peito", "dor de cabeça") ou clica em um
